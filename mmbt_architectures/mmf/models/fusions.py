@@ -1,13 +1,15 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
-import collections
 from copy import deepcopy
 
 import torch
+from omegaconf import II, DictConfig, OmegaConf
+from mmf.utils.checkpoint import load_pretrained_model
 from mmf.common.registry import registry
 from mmf.models.base_model import BaseModel
 from mmf.modules.encoders import MultiModalEncoderBase
 from mmf.utils.build import build_classifier_layer
 from mmf.utils.modeling import get_bert_configured_parameters
+from mmf.models.interfaces.mmbt import MMBTGridHMInterface
 
 
 class FusionBase(MultiModalEncoderBase):
@@ -95,7 +97,14 @@ class ConcatBERT(BaseModel):
         )
         parameters += get_bert_configured_parameters(self.classifier, lr)
         return parameters
-
+    @classmethod
+    def from_pretrained(cls, model_name, *args, **kwargs):
+        model = super().from_pretrained(model_name, *args, **kwargs)
+        config = load_pretrained_model(model_name)["full_config"]
+        OmegaConf.set_struct(config, True)
+        if model_name == "concat_bert.hateful_memes" or kwargs.get("interface"):
+            return MMBTGridHMInterface(model, config)
+        return model
     def forward(self, sample_list):
         text = sample_list.input_ids
         mask = sample_list.input_mask
@@ -175,7 +184,14 @@ class LateFusion(BaseModel):
         text_classifier_config = deepcopy(self.config.text_classifier)
         text_classifier_config.params.in_dim = self.config.text_hidden_size
         self.text_classifier = build_classifier_layer(text_classifier_config)
-
+    @classmethod
+    def from_pretrained(cls, model_name, *args, **kwargs):
+        model = super().from_pretrained(model_name, *args, **kwargs)
+        config = load_pretrained_model(model_name)["full_config"]
+        OmegaConf.set_struct(config, True)
+        if model_name == "late_fusion.hateful_memes" or kwargs.get("interface"):
+            return MMBTGridHMInterface(model, config)
+        return model
     def forward(self, sample_list):
         text = sample_list.input_ids
         mask = sample_list.input_mask
