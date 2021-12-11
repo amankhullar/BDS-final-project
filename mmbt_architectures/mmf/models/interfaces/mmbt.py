@@ -82,4 +82,4 @@ class MMBTGridHMInterface(nn.Module):
         scores = nn.functional.softmax(output["scores"], dim=1)
         confidence, label = torch.max(scores, dim=1)
 
-        return {"label": label.item(), "confidence": confidence.item()}
+        return sample_list,{"label": label.item(), "confidence": confidence.item()}
